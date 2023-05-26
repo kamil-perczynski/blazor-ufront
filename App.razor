@@ -1,0 +1,68 @@
+﻿@inject IJSRuntime JS
+@inject StateContainer StateContainer
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private DotNetObjectReference<App>? objRef;
+
+    private int count = 0;
+
+    [JSInvokable]
+    public void OnStoreStateChanged(State nextState, State previousState)
+    {
+        if (count > 100_000) return;
+
+        if (!StateContainer.State.Equals(nextState)) {            
+            StateContainer.State = nextState;
+            count++;
+        }
+    }
+
+
+    public void LocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        string navigationMethod = e.IsNavigationIntercepted ? "HTML" : "code";
+
+        if (e.IsNavigationIntercepted) {
+            JS.InvokeVoidAsync("blazorNavigationChanged", e.Location);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Console.WriteLine("LocationSub added");
+        NavigationManager.LocationChanged += LocationChanged;
+
+        objRef = DotNetObjectReference.Create(this);
+
+        StateContainer.OnChange += () => JS.InvokeAsync<State>("store.setState", StateContainer.State);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await JS.InvokeAsync<State>("store.getState");
+        StateContainer.State = state;
+
+        await JS.InvokeVoidAsync("subscribe", objRef);
+    }
+
+    public void Dispose()
+    {
+        Console.WriteLine("LocationSub removed");
+        NavigationManager.LocationChanged -= LocationChanged;
+    }
+}

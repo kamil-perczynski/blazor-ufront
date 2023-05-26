@@ -1,0 +1,36 @@
+﻿@page "/counter"
+@inject StateContainer StateContainer
+@implements IDisposable
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter: @StateContainer.State.foo</h1>
+
+<p role="status">Current count: @StateContainer.State.boo</p>
+
+<h4>The username is: @StateContainer.State.user.username</h4>
+<h4>Using language: @StateContainer.State.user.preferredLanguage</h4>
+<h4>Having permissions: @(string.Join(", ", StateContainer.State.user.permissions))</h4>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+
+@code {
+
+    private void IncrementCount()
+    {
+        var nextState = StateContainer.State.ShallowCopy();
+        nextState.boo++;
+
+        StateContainer.State = nextState;
+    }
+
+    protected override void OnInitialized()
+    {
+        StateContainer.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        StateContainer.OnChange -= StateHasChanged;
+    }
+}
